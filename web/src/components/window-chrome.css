@@ -1,0 +1,106 @@
+:root {
+  /* 必须与窗口实际的标题栏高度一致：WinAppSDK 的 AppWindowTitleBar 只有
+     Standard(32) / Tall(48) 两档，宿主传入 41..100 都落成高 48 的 Tall。
+     这里写 44 会让页面比标题栏矮 4px，标题栏底部连同按钮悬停高亮漏到内容区。
+     改高度时同步 host/app.py 的 MAIN_TITLEBAR_HEIGHT。 */
+  --pg-titlebar-height: 48px;
+  --pg-caption-hover: var(--hover);
+}
+
+.pg-chrome {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 40px;
+  gap: 8px;
+  padding: 0 9px 0 14px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--chrome);
+  color: var(--text-2);
+  user-select: none;
+  justify-content: space-between;
+}
+.pg-chrome__end{
+  width: 138px;
+  height: 100%;
+}
+.pg-chrome--overlay {
+  position: relative;
+  height: var(--pg-titlebar-height);
+  min-width: 0;
+  gap: 10px;
+  /* Reserve the three 48-DIP caption buttons (Tall) and the adjoining gutter. */
+  padding: 0 0 0 16px;
+  border: 0;
+  background: var(--window);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pg-chrome__brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.pg-chrome__icon { flex: none; object-fit: contain; }
+.pg-chrome--spacer { background: transparent; border: 0; pointer-events: none; }
+.pg-chrome__title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pg-chrome__actions { display: flex; gap: 2px; margin-left: auto; }
+.pg-chrome__btn { display: grid; place-items: center; width: 30px; height: 24px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.pg-chrome__btn:hover { background: var(--hover); }
+.pg-chrome__btn--close:hover { background: var(--danger); color: var(--on-danger); }
+.pg-chrome__id { color: var(--text-3); font-size: 11px; }
+
+.pg-breadcrumb { min-width: 0; overflow: hidden; padding: 4px 2px; margin-inline: -2px; }
+.pg-breadcrumb__list { position: relative; display: flex; align-items: center; gap: 2px; min-height: 24px; margin: 0; padding: 0; list-style: none; }
+.pg-breadcrumb__part { display: flex; align-items: center; min-width: 0; }
+.pg-breadcrumb :is(a, [aria-current]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-breadcrumb a { padding: 3px 5px; border-radius: var(--radius-control); color: var(--text-2); text-decoration: none; }
+.pg-breadcrumb a:hover { background: var(--hover); color: var(--text); }
+.pg-breadcrumb a:focus-visible { outline-offset: -2px; }
+.pg-breadcrumb .pg-chevron { width: 5px; height: 5px; margin-inline: 1px 7px; }
+
+.pg-search {
+  position: relative;
+  flex: 0 1 330px;
+  min-width: 0;
+  margin-inline-start: auto;
+  font-size: 13px;
+  font-weight: 400;
+}
+.pg-search input {
+  display: block;
+  width: 100%;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 32px 0 10px;
+  user-select: text;
+}
+.pg-search input::-webkit-search-cancel-button { appearance: none; }
+.pg-search button, .pg-search__glyph { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-2); }
+.pg-search__glyph { right: 9px; pointer-events: none; }
+.pg-search button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  right: 3px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+}
+.pg-search button:hover { background: var(--hover); }
+.pg-search button:focus-visible { outline-offset: -2px; }
+@media (min-width: 780px) {
+  .pg-chrome__brand { max-width: calc(50vw - min(190px, 22vw) - 26px); }
+  .pg-search { position: absolute; left: 50%; transform: translateX(-50%); width: min(380px, 44vw); margin: 0; }
+}
+@media (max-width: 520px) {
+  .pg-chrome__brand .pg-chrome__title { display: none; }
+  .pg-chrome__brand:has([aria-current]) { max-width: 42%; }
+}
+/* JadeView injects this element for BarOverlay on Linux. Its defaults are inline. */
+:root:has(.pg-chrome--overlay) > jade-titlebar {
+  --h: var(--pg-titlebar-height) !important;
+  --icon: var(--text) !important;
+  --hover: var(--pg-caption-hover) !important;
+}

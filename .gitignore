@@ -1,0 +1,14 @@
+node_modules/
+web/dist/
+.data/
+__pycache__/
+*.pyc
+*.log
+*.asar
+*.japk
+*.dll
+*.so
+runtime/*
+!runtime/README.md
+.venv/
+dist/

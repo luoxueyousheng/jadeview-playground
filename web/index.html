@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" href="./favicon.ico">
+  <title>JadeView Playground</title>
+  <!--
+    抢在首次绘制之前把主题落到 <html data-theme> 上。
+    深色令牌只挂在 `:root[data-theme="dark"]` 一个地方（见 style.css），
+    等模块加载完再设，系统是深色时会先闪一下浅色底。
+    键名与取值必须和 lib/prefs.ts 保持一致。
+  -->
+  <script>
+    (function () {
+      if (new URLSearchParams(location.search).get("surface") === "material") {
+        document.documentElement.dataset.surface = "material";
+      }
+      try {
+        var raw = localStorage.getItem("tf3mm.prefs");
+        var prefs = raw ? JSON.parse(raw) : {};
+        var theme = prefs.theme;
+        if (theme !== "dark" && theme !== "light") {
+          theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.dataset.theme = theme;
+        if (prefs.colorWeakMode === true) document.documentElement.setAttribute("data-color-weak", "");
+      } catch (error) {
+        /* 拿不到偏好就跟随系统，不影响功能 */
+        document.documentElement.dataset.theme =
+          window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="./src/main.tsx"></script>
+</body>
+</html>
