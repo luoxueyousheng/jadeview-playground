@@ -44,6 +44,7 @@ export interface NativeWindow {
   y?: number;
   maximized?: boolean;
   splashDuration?: number | null;
+  menuBarVisible?: boolean;
   customMenubar?: boolean;
   customContextMenu?: boolean;
 }

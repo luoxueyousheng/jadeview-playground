@@ -199,6 +199,7 @@
 .pg-param .pg-select { width: 100%; }
 .pg-param__label { font-size: 12px; font-weight: 620; color: var(--text-2); }
 .pg-param--toggle { grid-template-columns: 1fr auto; align-items: center; min-height: 31px; }
+.pg-param__switch { display: flex; align-items: center; min-height: 32px; }
 .pg-param__note { margin: 0; color: var(--text-3); font-size: 12px; }
 .pg-logo-preview { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--text-2); font-size: 12px; }
 .pg-logo-preview img { flex: none; object-fit: contain; border-radius: 5px; background: var(--fill); }

@@ -292,7 +292,10 @@ class Playground:
     def detach_menu(self, identity):
         try:
             self.native.wait_ready("window", identity)
-            ok = Window(self.native, identity).set_menu(None)
+            with self.lock:
+                if self.windows.get(identity, {}).get("menuBarVisible"):
+                    return
+                ok = Window(self.native, identity).set_menu(None)
             print(f"MENU_DETACHED {identity} ok={ok}", flush=True)
         except Exception as error:
             print(f"MENU_DETACH_FAILED {identity} {error!r}", flush=True)
@@ -823,6 +826,20 @@ class Playground:
                 value = self.validate_material(payload["value"])
                 n.accepted("set_window_backdrop", identity, encode(value))
                 self.windows[identity]["material"] = value
+            elif operation == "menubar":
+                record = self.windows[identity]
+                if record["kind"] != "theme":
+                    raise PermissionError("请在主题与背景材料示例中切换菜单栏")
+                enabled = payload["value"]
+                if type(enabled) is not bool:
+                    raise ValueError("菜单栏开关必须是布尔值")
+                with self.lock:
+                    if enabled:
+                        self.set_example_menu(identity, record.get("menuChecked", True))
+                    else:
+                        Window(n, identity).set_menu(None)
+                        record["customMenubar"] = False
+                    record["menuBarVisible"] = enabled
             elif operation == "titlebar-style":
                 self.apply_titlebar_style(identity, *self.validate_titlebar_style(payload))
             elif operation == "overlay":

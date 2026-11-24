@@ -36,7 +36,7 @@ export const STYLE_OPTIONS: ReadonlyArray<{ value: LaunchStyle; label: string }>
   { value: "hidden", label: "隐藏" },
 ];
 
-export type SampleField = "title" | "size" | "position" | "frameless" | "material" | "theme" | "flags" | "splash";
+export type SampleField = "title" | "size" | "position" | "frameless" | "resizable" | "material" | "theme" | "flags" | "splash";
 
 /** 与宿主 `spawn` 的校验区间保持一致。 */
 export const SIZE_LIMITS = { minWidth: 480, maxWidth: 3840, minHeight: 360, maxHeight: 2160 };

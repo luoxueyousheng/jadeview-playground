@@ -235,13 +235,13 @@ function TitlebarSearch({ query, onSearch }: { query: string; onSearch: (query: 
 function titlebarBreadcrumb(groupId: string | null, kind: string | null): Breadcrumb | undefined {
   const group = NAV_GROUPS.find((item) => item.id === groupId);
   if (!group) return;
-  const groupCrumb = { id: group.id, label: group.label };
+  const groupCrumb = { id: `group:${group.id}`, label: group.label };
   if (!kind) {
     return { depth: 1, items: [{ id: "overview", label: "示例", to: DEFAULT_PATH }, groupCrumb] };
   }
   return { depth: 2, items: [
     { ...groupCrumb, to: groupPath(group.id) },
-    { id: kind, label: EXAMPLES[kind].title },
+    { id: `example:${kind}`, label: EXAMPLES[kind].title },
   ] };
 }
 

@@ -64,13 +64,26 @@ export function TitlebarComponents({ runtime, window, refresh, toast, noIcon = f
   );
 }
 
-/** DWM 默认标题栏示例：组件、样式和一段可回退的历史。 */
+/** DWM 默认标题栏示例：边框、组件、样式和一段可回退的历史。 */
 export function DwmDemo(props: DemoProps) {
   const { runtime, snapshot, window, refresh, toast } = props;
   const [height, setHeight] = useState(() => String(window.titlebarHeight ?? 0));
   const [colors, setColors] = useState<TitlebarColors>(() => window.titlebarColors ?? {});
   const [applying, setApplying] = useState(false);
+  const [changingBorder, setChangingBorder] = useState(false);
   const heightDip = parseTitlebarHeight(height);
+
+  const changeBorder = async (resizable: boolean) => {
+    setChangingBorder(true);
+    try {
+      await api.windowStyle(window.id, "resizable", { value: resizable });
+      await refresh();
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), "error");
+    } finally {
+      setChangingBorder(false);
+    }
+  };
 
   const applyStyle = async () => {
     if (heightDip === null) return;
@@ -94,6 +107,19 @@ export function DwmDemo(props: DemoProps) {
 
   return (
     <>
+      <Group>
+        <Card>
+          <Row label="可调整边框">
+            <Switch
+              label="可调整边框"
+              checked={window.resizable}
+              disabled={changingBorder}
+              onChange={(next) => void changeBorder(next)}
+            />
+          </Row>
+        </Card>
+      </Group>
+
       <Group title="标题栏组件">
         <TitlebarComponents {...props} />
       </Group>
@@ -277,7 +303,8 @@ export function FramelessDemo({ window }: DemoProps) {
 export function ThemeDemo({ runtime, window, refresh, toast }: DemoProps) {
   const [busy, setBusy] = useState(false);
 
-  const change = async (operation: "theme" | "material", value: string) => {
+  const change = async (...[operation, value]:
+    [operation: "theme" | "material", value: string] | [operation: "menubar", value: boolean]) => {
     setBusy(true);
     try {
       await api.windowStyle(window.id, operation, { value });
@@ -313,6 +340,10 @@ export function ThemeDemo({ runtime, window, refresh, toast }: DemoProps) {
             onChange={(next) => void change("material", next)}
             options={materialOptions(runtime.keepActiveBackdrop)}
           />
+        </Row>
+        <Row label="菜单栏">
+          <Switch label="菜单栏" checked={window.menuBarVisible ?? false} disabled={busy}
+            onChange={(next) => void change("menubar", next)} />
         </Row>
         <Foot>失焦保留需要 Windows 11 22H2 或更新版本，以及与宿主进程架构匹配的 Windows App Runtime 1.8。</Foot>
       </Card>

@@ -44,7 +44,7 @@ export const EXAMPLES: Record<string, ExampleMeta> = {
       "切换后立即生效，不需要重建窗口",
     ],
     language: "C",
-    api: "// 使用已就绪的窗口 ID。顺序为返回、刷新、图标、最小化、最大化。\nset_titlebar_components(window_id, 1, 1, 1, 1, 1);\n\n// 高度为 20–100 逻辑像素，传 0 恢复默认。\n// 依次设置标题栏背景、前景、按钮背景、按钮悬浮背景和悬浮前景。\n// 颜色支持 #RRGGBB / #RRGGBBAA。传空字符串跟随主题，传 NULL 保留当前颜色。\nset_titlebar_style(window_id, 42, \"#202020\", \"#f5f5f5\",\n                   \"\", \"#ffffff20\", \"#ffffff\");",
+    api: "// 创建时用 WebViewWindowOptions.resizable 选择边框类型。\n// 窗口打开后可以切换，1 允许拖动边框调整尺寸，0 使用固定边框。\nset_window_resizable(window_id, 1);\n\n// 使用已就绪的窗口 ID。顺序为返回、刷新、图标、最小化、最大化。\nset_titlebar_components(window_id, 1, 1, 1, 1, 1);\n\n// 高度为 20–100 逻辑像素，传 0 恢复默认。\n// 依次设置标题栏背景、前景、按钮背景、按钮悬浮背景和悬浮前景。\n// 颜色支持 #RRGGBB / #RRGGBBAA。传空字符串跟随主题，传 NULL 保留当前颜色。\nset_titlebar_style(window_id, 42, \"#202020\", \"#f5f5f5\",\n                   \"\", \"#ffffff20\", \"#ffffff\");",
   },
   overlay: {
     kind: "overlay", title: "覆盖层标题栏", group: "窗口与标题栏", icon: "overlay",
@@ -292,7 +292,7 @@ webview.set_context_menu([
 };
 
 export const SAMPLE_FIELDS: Record<string, ReadonlyArray<SampleField>> = {
-  dwm: ["size"],
+  dwm: ["size", "resizable"],
   overlay: ["size", "material", "theme"],
   hidden: ["size"],
   frameless: ["size", "frameless"],

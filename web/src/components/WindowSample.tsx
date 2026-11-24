@@ -118,7 +118,21 @@ window = runtime.create_window("https://jade.run",
                           maximized=${options.maximized ? 1 : 0}),
     features=features)` : source;
 
+  const resizableSwitch = (
+    <Switch
+      label="可调整边框"
+      checked={draft.resizable}
+      onChange={(value) => update({ resizable: value })}
+    />
+  );
+
   const params: Record<SampleField, ReactNode> = {
+    resizable: (
+      <div className="pg-param" key="resizable">
+        <span className="pg-param__label">可调整边框</span>
+        <div className="pg-param__switch">{resizableSwitch}</div>
+      </div>
+    ),
     title: (
       <div className="pg-param" key="title">
         <span className="pg-param__label">窗口标题</span>
@@ -274,8 +288,8 @@ window = runtime.create_window("https://jade.run",
           <Switch checked={draft.topmost} onChange={(value) => update({ topmost: value })} label="始终置顶" />
         </div>
         <div className="pg-param pg-param--toggle">
-          <span className="pg-param__label">可缩放</span>
-          <Switch checked={draft.resizable} onChange={(value) => update({ resizable: value })} label="可缩放" />
+          <span className="pg-param__label">可调整边框</span>
+          {resizableSwitch}
         </div>
         <div className="pg-param pg-param--toggle">
           <span className="pg-param__label">启动即最大化</span>
