@@ -352,7 +352,7 @@ export function LayoutDemo({ runtime, snapshot, refresh, toast }: DemoProps) {
                     <Button busy={busy} onClick={() => void act("zoom")}>应用</Button>
                   </Row>
                   <Row label="JavaScript" stack>
-                    <textarea value={script} onChange={(event) => setScript(event.target.value)} rows={3} />
+                    <textarea className="pg-textarea" value={script} onChange={(event) => setScript(event.target.value)} rows={3} />
                     <Button busy={busy} onClick={() => void act("script")}>执行脚本</Button>
                   </Row>
                   <Row block>

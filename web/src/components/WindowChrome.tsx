@@ -2,7 +2,7 @@
  * 页面自绘的窗口横条。
  *
  * 主窗口的 BarOverlay 标题栏负责显示标题和提供拖拽区，窗口按钮由 JadeView 提供。
- * 示例窗口可独立显示无边框按钮，或为覆盖层留出空间。
+ * 示例窗口可独立显示无边框按钮，或在原生覆盖层下方提供透明拖拽区。
  */
 
 import { AnimatePresence, LayoutGroup, motion, useIsPresent, useReducedMotionConfig, type Variants } from "motion/react";
@@ -26,6 +26,7 @@ export function WindowChrome({
   variant,
   windowId,
   breadcrumb,
+  leading,
   children,
 }: {
   title: string;
@@ -33,16 +34,18 @@ export function WindowChrome({
   /** 仅用于右上角的等宽读数，可缺省（覆盖层示例在快照到达前就要占位）。 */
   windowId?: number;
   breadcrumb?: Breadcrumb;
+  leading?: ReactNode;
   children?: ReactNode;
 }) {
   if (variant === "spacer") {
-    return <div className="pg-chrome pg-chrome--spacer" aria-hidden="true" />;
+    return <div className="pg-chrome pg-chrome--spacer" jade-region-drag="" aria-hidden="true" />;
   }
   if (variant === "overlay") {
     return (
       <header className="pg-chrome pg-chrome--overlay" jade-region-drag="">
         <div className="pg-chrome__brand">
           <img className="pg-chrome__icon" src="./favicon.ico" width="16" height="16" alt="" draggable={false} />
+          {leading}
           <ChromeBreadcrumb title={title} breadcrumb={breadcrumb} />
         </div>
         {children}
@@ -91,7 +94,12 @@ function ChromeBreadcrumb({ title, breadcrumb }: { title: string; breadcrumb?: B
                 layout={reduceMotion ? false : "position"} variants={breadcrumbMotion}
                 initial={reduceMotion ? false : "enter"} animate="active" exit={reduceMotion ? undefined : "exit"}
                 transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.2, 0.75, 0.25, 1] }}>
-                {index > 0 ? <span className="pg-chevron" aria-hidden="true" /> : null}
+                {index > 0 ? (
+                  <svg className="pg-breadcrumb__sep" viewBox="0 0 12 12" width="12" height="12" fill="none"
+                    stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="m4.5 2.5 3.5 3.5-3.5 3.5" />
+                  </svg>
+                ) : null}
                 <CrumbLabel item={item} root={!breadcrumb} />
               </motion.li>
             ))}

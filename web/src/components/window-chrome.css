@@ -13,23 +13,23 @@
   align-items: center;
   height: 40px;
   gap: 8px;
-  padding: 0 9px 0 14px;
+  padding: 0 8px 0 14px;
   border-bottom: 1px solid var(--separator);
   background: var(--chrome);
   color: var(--text-2);
   user-select: none;
   justify-content: space-between;
 }
-.pg-chrome__end{
+.pg-chrome__end {
   width: 138px;
   height: 100%;
+  flex: none;
 }
 .pg-chrome--overlay {
   position: relative;
   height: var(--pg-titlebar-height);
   min-width: 0;
   gap: 10px;
-  /* Reserve the three 48-DIP caption buttons (Tall) and the adjoining gutter. */
   padding: 0 0 0 16px;
   border: 0;
   background: var(--window);
@@ -38,28 +38,83 @@
   font-weight: 500;
 }
 
-.pg-chrome__brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.pg-chrome__icon { flex: none; object-fit: contain; }
-.pg-chrome--spacer { background: transparent; border: 0; pointer-events: none; }
-.pg-chrome__title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.pg-chrome__actions { display: flex; gap: 2px; margin-left: auto; }
-.pg-chrome__btn { display: grid; place-items: center; width: 30px; height: 24px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.pg-chrome__brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pg-chrome__icon {
+  flex: none;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.pg-chrome__nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  margin-inline: 2px;
+  padding-right: 6px;
+  border-right: 1px solid var(--separator);
+}
+.pg-chrome__tool {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 110ms ease, color 110ms ease, opacity 110ms ease;
+}
+.pg-chrome__tool:hover:not(:disabled) { background: var(--hover); }
+.pg-chrome__tool:active:not(:disabled) { background: var(--pressed); color: var(--text-2); }
+.pg-chrome__tool:disabled { opacity: 0.34; cursor: default; }
+.pg-chrome__tool:focus-visible { outline-offset: -2px; }
+.pg-chrome--spacer { background: transparent; border: 0; }
+.pg-chrome__title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text); font-weight: 500; }
+.pg-chrome__actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.pg-chrome__btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 110ms ease, color 110ms ease;
+}
 .pg-chrome__btn:hover { background: var(--hover); }
 .pg-chrome__btn--close:hover { background: var(--danger); color: var(--on-danger); }
-.pg-chrome__id { color: var(--text-3); font-size: 11px; }
+.pg-chrome__id {
+  color: var(--text-3);
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--fill);
+}
 
 .pg-breadcrumb { min-width: 0; overflow: hidden; padding: 4px 2px; margin-inline: -2px; }
 .pg-breadcrumb__list { position: relative; display: flex; align-items: center; gap: 2px; min-height: 24px; margin: 0; padding: 0; list-style: none; }
-.pg-breadcrumb__part { display: flex; align-items: center; min-width: 0; }
+.pg-breadcrumb__part { display: flex; align-items: center; gap: 2px; min-width: 0; }
 .pg-breadcrumb :is(a, [aria-current]) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pg-breadcrumb a { padding: 3px 5px; border-radius: var(--radius-control); color: var(--text-2); text-decoration: none; }
+.pg-breadcrumb a {
+  padding: 3px 6px;
+  border-radius: var(--radius-control);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: background-color 110ms ease, color 110ms ease;
+}
 .pg-breadcrumb a:hover { background: var(--hover); color: var(--text); }
 .pg-breadcrumb a:focus-visible { outline-offset: -2px; }
-.pg-breadcrumb .pg-chevron { width: 5px; height: 5px; margin-inline: 1px 7px; }
+.pg-breadcrumb [aria-current] { padding: 3px 4px; color: var(--text); font-weight: 600; }
+.pg-breadcrumb__sep { flex: none; color: var(--text-3); margin-inline: 1px; }
 
+/* WinUI 3 AutoSuggestBox 风格标题栏搜索框 */
 .pg-search {
   position: relative;
-  flex: 0 1 330px;
+  flex: 0 1 340px;
   min-width: 0;
   margin-inline-start: auto;
   font-size: 13px;
@@ -68,31 +123,32 @@
 .pg-search input {
   display: block;
   width: 100%;
-  min-height: 30px;
-  height: 30px;
-  padding: 0 32px 0 10px;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 34px 0 12px;
+  border-radius: var(--radius-control);
   user-select: text;
 }
 .pg-search input::-webkit-search-cancel-button { appearance: none; }
 .pg-search button, .pg-search__glyph { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-2); }
-.pg-search__glyph { right: 9px; pointer-events: none; }
+.pg-search__glyph { right: 10px; pointer-events: none; }
 .pg-search button {
   display: grid;
   place-items: center;
   padding: 0;
   width: 24px;
   height: 24px;
-  right: 3px;
+  right: 4px;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   cursor: pointer;
 }
-.pg-search button:hover { background: var(--hover); }
+.pg-search button:hover { background: var(--hover); color: var(--text); }
 .pg-search button:focus-visible { outline-offset: -2px; }
 @media (min-width: 780px) {
   .pg-chrome__brand { max-width: calc(50vw - min(190px, 22vw) - 26px); }
-  .pg-search { position: absolute; left: 50%; transform: translateX(-50%); width: min(380px, 44vw); margin: 0; }
+  .pg-search { position: absolute; left: 50%; transform: translateX(-50%); width: min(390px, 44vw); margin: 0; }
 }
 @media (max-width: 520px) {
   .pg-chrome__brand .pg-chrome__title { display: none; }

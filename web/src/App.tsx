@@ -1,5 +1,5 @@
-import { MotionConfig, useReducedMotion } from "motion/react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { animate, motion, MotionConfig, useMotionValue, useReducedMotion, useTransform, type MotionStyle } from "motion/react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   HashRouter,
   Navigate,
@@ -17,31 +17,40 @@ import { GroupIcons, IconAbout, IconOverview } from "./components/NavIcons";
 import { Nav, type NavItem } from "./components/Nav";
 import { Empty } from "./components/primitives";
 import { EXAMPLES, NAV_GROUPS } from "./data/catalog";
-import { setTheme, usePrefs } from "./lib/prefs";
-import { resolveTheme } from "./lib/theme";
+import { setSidebarCollapsed, setTheme, usePrefs, type ThemePref } from "./lib/prefs";
+import { LAYOUT, SLIDE } from "./lib/motion";
+import { useHostWindowTheme } from "./lib/theme";
 import { Detail } from "./pages/Detail";
 import { ExamplePage, GroupPage } from "./pages/GroupPage";
 import { AboutPage, Overview } from "./pages/Overview";
 import { DEFAULT_PATH, exampleOfPath, groupOfPath, groupPath } from "./routing/routes";
 import { useRuntime } from "./runtime";
+import { usePlaygroundSlots, type NavGroupSlot } from "./slots";
 import { useToasts } from "./toast";
 import { useExampleLauncher, type Launcher } from "./useExamples";
 
-/** 一级分组 + 二级示例；两级都是路径，不直接建窗口。 */
-const NAV_ITEMS: ReadonlyArray<NavItem> = [
-  { id: "overview", path: DEFAULT_PATH, label: "概览", icon: <IconOverview /> },
-  ...NAV_GROUPS.map((group) => {
-    const Icon = GroupIcons[group.id as keyof typeof GroupIcons];
-    return {
-      id: group.id,
-      path: groupPath(group.id),
-      label: group.label,
-      icon: <Icon />,
-      children: group.items.map((kind) => ({ id: kind, label: EXAMPLES[kind]?.title ?? kind })),
-    };
-  }),
-  { id: "about", path: "/about", label: "关于", icon: <IconAbout /> },
-];
+function buildNavItems(
+  customGroups?: NavGroupSlot[],
+  customExamples?: Record<string, { title: string }>,
+): ReadonlyArray<NavItem> {
+  const allGroups = [...NAV_GROUPS, ...(customGroups ?? [])];
+  const allExamples = { ...EXAMPLES, ...customExamples };
+  return [
+    { id: "overview", path: DEFAULT_PATH, label: "概览", icon: <IconOverview /> },
+    ...allGroups.map((group) => {
+      const iconKey = "icon" in group ? group.icon : group.id;
+      const Icon = GroupIcons[iconKey as keyof typeof GroupIcons] ?? GroupIcons.windowing;
+      return {
+        id: group.id,
+        path: groupPath(group.id),
+        label: group.label,
+        icon: <Icon />,
+        children: group.items.map((kind) => ({ id: kind, label: allExamples[kind]?.title ?? kind })),
+      };
+    }),
+    { id: "about", path: "/about", label: "关于", icon: <IconAbout /> },
+  ];
+}
 
 export default function App() {
   const { reduceMotion } = usePrefs();
@@ -69,19 +78,93 @@ export default function App() {
   );
 }
 
+const SIDEBAR_WIDTH = 228;
+const SIDEBAR_RAIL_WIDTH = 56;
+const NARROW_SIDEBAR_QUERY = "(max-width: 640px)";
+
+function subscribeNarrowSidebar(onChange: () => void) {
+  const query = window.matchMedia(NARROW_SIDEBAR_QUERY);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function readNarrowSidebar() {
+  return window.matchMedia(NARROW_SIDEBAR_QUERY).matches;
+}
+
 function MainWindow({ material }: { material: boolean }) {
   const { runtime, snapshot, error, refresh } = useRuntime();
+  const slots = usePlaygroundSlots();
   const { toasts, toast } = useToasts();
   const launcher = useExampleLauncher(refresh, toast);
   const location = useLocation();
   const navigate = useNavigate();
+  const { sidebarCollapsed, reduceMotion } = usePrefs();
+  const systemReduceMotion = useReducedMotion();
+  const reducedMotion = reduceMotion || Boolean(systemReduceMotion);
+  const narrowSidebar = useSyncExternalStore(subscribeNarrowSidebar, readNarrowSidebar);
+  const effectiveCollapsed = narrowSidebar || sidebarCollapsed;
   const [query, setQuery] = useState("");
-  const activeGroup = groupOfPath(location.pathname);
+  const [navState, setNavState] = useState({ canGoBack: false, canGoForward: false });
+  const navItems = useMemo(
+    () => buildNavItems(slots.customNavGroups, slots.customExamples),
+    [slots.customNavGroups, slots.customExamples],
+  );
+  const allGroups = useMemo(
+    () => [...NAV_GROUPS, ...(slots.customNavGroups ?? [])],
+    [slots.customNavGroups],
+  );
+  const activeGroup = groupOfPath(location.pathname) ?? allGroups.find((group) =>
+    location.pathname === groupPath(group.id) || group.items.some((kind) => location.pathname === `/examples/${kind}`),
+  )?.id ?? null;
   const activeExample = exampleOfPath(location.pathname);
   const openKinds = useMemo(
     () => new Set((snapshot?.windows ?? []).map((item) => item.kind)),
     [snapshot],
   );
+
+  const sideWidth = useMotionValue(effectiveCollapsed ? SIDEBAR_RAIL_WIDTH : SIDEBAR_WIDTH);
+  const sideWidthCss = useTransform(sideWidth, (value) => `${value}px`);
+  const sidebarExpansion = useTransform(sideWidth, [SIDEBAR_RAIL_WIDTH, SIDEBAR_WIDTH], [0, 1]);
+  const sideSettled = useRef(false);
+
+  useLayoutEffect(() => {
+    const target = effectiveCollapsed ? SIDEBAR_RAIL_WIDTH : SIDEBAR_WIDTH;
+    if (!sideSettled.current || reducedMotion) {
+      sideSettled.current = true;
+      sideWidth.set(target);
+      return;
+    }
+    const control = animate(sideWidth, target, LAYOUT);
+    return () => control.stop();
+  }, [effectiveCollapsed, reducedMotion, sideWidth]);
+
+  const syncNavState = useCallback(async () => {
+    if (!runtime) return;
+    try {
+      const next = await api.navState();
+      setNavState(next);
+    } catch {
+      // 窗口关闭中或尚未就绪时忽略
+    }
+  }, [runtime]);
+
+  useEffect(() => {
+    if (!runtime) return;
+    void syncNavState();
+    const timer = window.setTimeout(() => void syncNavState(), 80);
+    return () => window.clearTimeout(timer);
+  }, [runtime, location.key, location.pathname, location.hash, syncNavState]);
+
+  const navigateHistory = async (direction: "back" | "forward") => {
+    if (!runtime) return;
+    try {
+      await api.navGo(direction);
+      window.setTimeout(() => void syncNavState(), 60);
+    } catch (cause) {
+      toast(cause instanceof Error ? cause.message : String(cause), "error");
+    }
+  };
 
   useEffect(() => {
     if (location.pathname !== DEFAULT_PATH) setQuery("");
@@ -104,7 +187,9 @@ function MainWindow({ material }: { material: boolean }) {
       const theme = root.dataset.theme === "dark" ? "Dark" : "Light";
       if (queuedTheme !== theme) {
         queuedTheme = theme;
-        updates = updates.then(() => active ? api.windowStyle(runtime.windowId, "theme", { value: theme }) : undefined)
+        updates = updates
+          .then(() => active ? api.windowStyle(runtime.windowId, "theme", { value: theme }) : undefined)
+          .then(() => active ? refresh() : undefined)
           .catch((error: unknown) => console.error("无法同步标题栏主题", error));
       }
       const color = material ? "" : getComputedStyle(root).getPropertyValue("--window").trim();
@@ -124,7 +209,7 @@ function MainWindow({ material }: { material: boolean }) {
       observer.disconnect();
       hot?.off("vite:afterUpdate", sync);
     };
-  }, [material, runtime]);
+  }, [material, runtime, refresh]);
 
   const body = (() => {
     if (error) {
@@ -144,8 +229,8 @@ function MainWindow({ material }: { material: boolean }) {
     return (
       <div className="pg-page-host">
         <Routes key={location.pathname}>
-          <Route path="/overview" element={<Overview query={query} />} />
-          <Route path="/groups/:groupId" element={<GroupRoute />} />
+          <Route path="/overview" element={<Overview query={query} openKinds={openKinds} runtime={runtime} />} />
+          <Route path="/groups/:groupId" element={<GroupRoute openKinds={openKinds} />} />
           <Route
             path="/examples/:kind"
             element={<ExampleRoute runtime={runtime} snapshot={snapshot} launcher={launcher} />}
@@ -158,7 +243,10 @@ function MainWindow({ material }: { material: boolean }) {
   })();
 
   return (
-    <div className="app pg-app pg-app--main">
+    <motion.div
+      className={effectiveCollapsed ? "app pg-app pg-app--main pg-app--nav-collapsed" : "app pg-app pg-app--main"}
+      style={{ "--side-width": sideWidthCss, "--sidebar-expansion": sidebarExpansion } as MotionStyle}
+    >
       <a
         className="skip-link"
         href="#main-content"
@@ -170,24 +258,76 @@ function MainWindow({ material }: { material: boolean }) {
         跳到主要内容
       </a>
 
-      <WindowChrome title="JadeView Playground" variant="overlay"
-        breadcrumb={titlebarBreadcrumb(activeGroup, activeExample)}>
+      <WindowChrome
+        title="JadeView Playground"
+        variant="overlay"
+        breadcrumb={titlebarBreadcrumb(activeGroup, activeExample, slots.customNavGroups, slots.customExamples)}
+        leading={
+          <div className="pg-chrome__nav" jade-region-no-drag="">
+            <button
+              type="button"
+              className="pg-chrome__tool"
+              disabled={narrowSidebar}
+              title={effectiveCollapsed ? "展开侧边栏" : "收起侧边栏"}
+              aria-label={effectiveCollapsed ? "展开侧边栏" : "收起侧边栏"}
+              aria-expanded={!effectiveCollapsed}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+              <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.35"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="2.5" width="12" height="11" rx="2" />
+                <path d="M5.5 2.5v11" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="pg-chrome__tool"
+              title="后退"
+              aria-label="后退"
+              disabled={!runtime || !navState.canGoBack}
+              onClick={() => void navigateHistory("back")}
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.45"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10 3.5 5.5 8 10 12.5" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="pg-chrome__tool"
+              title="前进"
+              aria-label="前进"
+              disabled={!runtime || !navState.canGoForward}
+              onClick={() => void navigateHistory("forward")}
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.45"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 3.5 10.5 8 6 12.5" />
+              </svg>
+            </button>
+          </div>
+        }
+      >
         <TitlebarSearch query={query} onSearch={search} />
+        {runtime && slots.titlebarActions ? slots.titlebarActions({ runtime }) : null}
       </WindowChrome>
       <div className="view view--wide">
-        <aside className="side" aria-label="示例导航">
+        <motion.aside className="side" aria-label="示例导航">
           <div className="side__inner">
             <Nav
-              items={NAV_ITEMS}
+              items={navItems}
               activePath={location.pathname}
               activeGroup={activeGroup}
               activeExample={activeExample}
               onNavigate={(path) => navigate(path)}
               openKinds={openKinds}
-              footer={<ThemeButton />}
+              collapsed={effectiveCollapsed}
+              header={runtime && slots.sidebarHeader ? slots.sidebarHeader({ runtime, collapsed: effectiveCollapsed }) : undefined}
+              footerTop={runtime && slots.sidebarFooterBeforeTheme ? slots.sidebarFooterBeforeTheme({ runtime, collapsed: effectiveCollapsed }) : undefined}
+              footer={<ThemeButton compact={effectiveCollapsed} reducedMotion={reducedMotion} />}
             />
           </div>
-        </aside>
+        </motion.aside>
 
         <div className="shell">
           <main className="panel panel--routes" id="main-content" tabIndex={-1}>{body}</main>
@@ -195,7 +335,7 @@ function MainWindow({ material }: { material: boolean }) {
       </div>
 
       <ToastHost toasts={toasts} />
-    </div>
+    </motion.div>
   );
 }
 
@@ -232,8 +372,15 @@ function TitlebarSearch({ query, onSearch }: { query: string; onSearch: (query: 
   );
 }
 
-function titlebarBreadcrumb(groupId: string | null, kind: string | null): Breadcrumb | undefined {
-  const group = NAV_GROUPS.find((item) => item.id === groupId);
+function titlebarBreadcrumb(
+  groupId: string | null,
+  kind: string | null,
+  customGroups?: NavGroupSlot[],
+  customExamples?: Record<string, { title: string }>,
+): Breadcrumb | undefined {
+  const allGroups = [...NAV_GROUPS, ...(customGroups ?? [])];
+  const allExamples = { ...EXAMPLES, ...customExamples };
+  const group = allGroups.find((item) => item.id === groupId);
   if (!group) return;
   const groupCrumb = { id: `group:${group.id}`, label: group.label };
   if (!kind) {
@@ -241,13 +388,13 @@ function titlebarBreadcrumb(groupId: string | null, kind: string | null): Breadc
   }
   return { depth: 2, items: [
     { ...groupCrumb, to: groupPath(group.id) },
-    { id: `example:${kind}`, label: EXAMPLES[kind].title },
+    { id: `example:${kind}`, label: allExamples[kind]?.title ?? kind },
   ] };
 }
 
-function GroupRoute() {
+function GroupRoute({ openKinds }: { openKinds: ReadonlySet<string> }) {
   const { groupId = "" } = useParams();
-  return <GroupPage group={groupId} />;
+  return <GroupPage group={groupId} openKinds={openKinds} />;
 }
 
 function ExampleRoute({
@@ -261,6 +408,9 @@ function ExampleWindow({ kind }: { kind: string }) {
   const { runtime, snapshot, error, refresh } = useRuntime();
   const { toasts, toast } = useToasts();
   const meta = EXAMPLES[kind];
+  const window = snapshot?.windows.find((item) => item.id === runtime?.windowId) ?? null;
+
+  useHostWindowTheme(runtime?.windowId, window?.theme ?? snapshot?.theme, refresh);
 
   const content = (() => {
     if (error) {
@@ -288,7 +438,6 @@ function ExampleWindow({ kind }: { kind: string }) {
     );
   })();
 
-  const window = snapshot?.windows.find((item) => item.id === runtime?.windowId) ?? null;
   // 以窗口实际使用的标题栏样式为准：启动参数里可以改，不能只看示例 kind。
   const style = window?.style ?? (kind === "overlay" ? "BarOverlay"
     : kind === "hidden" || kind === "frameless" ? "hidden" : "default");
@@ -320,33 +469,75 @@ function ExampleWindow({ kind }: { kind: string }) {
   );
 }
 
-function ThemeButton() {
-  const { theme } = usePrefs();
-  const [systemDark, setSystemDark] = useState(() => resolveTheme("system") === "dark");
-  useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const sync = (event: MediaQueryListEvent) => setSystemDark(event.matches);
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
-  const dark = theme === "dark" || (theme === "system" && systemDark);
+const THEME_TABS: ReadonlyArray<{ value: ThemePref; label: string }> = [
+  { value: "system", label: "跟随系统" },
+  { value: "dark", label: "深色" },
+  { value: "light", label: "浅色" },
+];
 
-  const label = dark ? "切换到浅色外观" : "切换到深色外观";
+function ThemeButton({ compact, reducedMotion }: { compact: boolean; reducedMotion: boolean }) {
+  const { theme } = usePrefs();
+  const transition = reducedMotion ? { duration: 0 } : SLIDE;
 
   return (
-    <button type="button" className="pg-theme" title={label} aria-label={label} onClick={() => setTheme(dark ? "light" : "dark")}>
-      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5"
-        strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {dark ? (
-          <>
-            <circle cx="8" cy="8" r="3.1" />
-            <path d="M8 1.6v1.5M8 12.9v1.5M1.6 8h1.5M12.9 8h1.5M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" />
-          </>
-        ) : (
-          <path d="M13.2 10.2A5.6 5.6 0 0 1 5.8 2.8a5.6 5.6 0 1 0 7.4 7.4Z" />
-        )}
-      </svg>
-      <span className="app-tabs__label">{dark ? "浅色外观" : "深色外观"}</span>
-    </button>
+    <div
+      className={compact ? "pg-theme-tabs pg-theme-tabs--compact" : "pg-theme-tabs"}
+      role="tablist"
+      aria-label="主题外观"
+      aria-orientation={compact ? "vertical" : "horizontal"}
+    >
+      {THEME_TABS.map((item) => {
+        const selected = theme === item.value;
+        return (
+          <button
+            key={item.value}
+            type="button"
+            role="tab"
+            className="pg-theme-tab"
+            aria-selected={selected}
+            aria-label={item.label}
+            title={item.label}
+            data-selected={selected || undefined}
+            onClick={() => {
+              if (!selected) setTheme(item.value);
+            }}
+          >
+            {selected ? (
+              <motion.span
+                className="pg-theme-tab__indicator"
+                layoutId={reducedMotion ? undefined : "theme-tab-indicator"}
+                initial={false}
+                transition={transition}
+                aria-hidden="true"
+              />
+            ) : null}
+            <span className="pg-theme-tab__icon">
+              <ThemeTabIcon value={item.value} />
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ThemeTabIcon({ value }: { value: ThemePref }) {
+  return (
+    <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.45"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {value === "system" ? (
+        <>
+          <rect x="2" y="2.6" width="12" height="8.8" rx="1.6" />
+          <path d="M5.5 13.6h5M8 11.4v2.2" />
+        </>
+      ) : value === "dark" ? (
+        <path d="M13.2 10.2A5.6 5.6 0 0 1 5.8 2.8a5.6 5.6 0 1 0 7.4 7.4Z" />
+      ) : (
+        <>
+          <circle cx="8" cy="8" r="3" />
+          <path d="M8 1.6v1.4M8 13v1.4M1.6 8H3M13 8h1.4M3.5 3.5l1 1M11.5 11.5l1 1M12.5 3.5l-1 1M4.5 11.5l-1 1" />
+        </>
+      )}
+    </svg>
   );
 }

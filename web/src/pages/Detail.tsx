@@ -8,7 +8,8 @@
 
 import type { RuntimeInfo, Snapshot } from "../bridge";
 import { Empty, Page, PageHead } from "../components/primitives";
-import { EXAMPLES } from "../data/catalog";
+import { EXAMPLES, navGroupOf } from "../data/catalog";
+import { usePlaygroundSlots } from "../slots";
 import { DEMOS } from "./demos/registry";
 import type { DemoProps } from "./demos/types";
 
@@ -25,8 +26,11 @@ export function Detail({
   refresh: () => Promise<void>;
   toast: (message: string, tone?: "info" | "error") => void;
 }) {
-  const meta = EXAMPLES[kind];
+  const slots = usePlaygroundSlots();
+  const meta = slots.customExamples?.[kind] ?? EXAMPLES[kind];
+  const group = slots.customNavGroups?.find((item) => item.items.includes(kind)) ?? navGroupOf(kind);
   const Demo = DEMOS[kind];
+  const CustomDemo = slots.customDemos?.[kind];
   const window = snapshot.windows.find((item) => item.id === runtime.windowId);
 
   const props: DemoProps | null = window ? { runtime, window, snapshot, refresh, toast } : null;
@@ -42,9 +46,19 @@ export function Detail({
 
   return (
     <Page>
-      <PageHead title={meta?.title ?? kind} />
+      <PageHead
+        kicker={group ? `${group.label} · Window ${window?.id ?? runtime.windowId}` : undefined}
+        title={meta?.title ?? kind}
+        sub={meta?.summary}
+      />
 
-      {Demo && props ? <Demo {...props} /> : <Empty title="此示例没有网页内容" />}
+      {Demo && props ? (
+        <Demo {...props} />
+      ) : CustomDemo ? (
+        <CustomDemo runtime={runtime} theme={window?.theme ?? snapshot.theme} />
+      ) : (
+        <Empty title="此示例没有网页内容" />
+      )}
     </Page>
   );
 }

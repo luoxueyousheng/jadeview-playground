@@ -15,22 +15,39 @@ import sys
 import threading
 import time
 from urllib.parse import urlsplit
+import webbrowser
 from .dev import vite_frontend
 from .layout import layout_bounds
 from .native import (Native, Bounds, WindowOptions, WebViewSettings, ObjectState,
     MountCapabilities, Notification, IPC_CALLBACK, PERMISSION_CALLBACK, encode)
 from .sdk import JadeViewError, Menu, SplashOptions, WebView, Window, WindowFeatures
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 CHANNEL = "playground"
 APP_SIGNATURE = "jadeview-next-playground"
 APP_TITLE = "JadeView Playground"
-LOGO = ROOT / "host/assets/playground.png"
+LOGO = ROOT / "assets/playground.png"
 MAIN_WINDOW_BACKGROUND = "#202020"
+LIGHT_WINDOW_BACKGROUND = "#f3f3f3"
 MAIN_TITLEBAR_HEIGHT = 48
 DWMSBT_MIN_BUILD = 22621
 VER_NT_WORKSTATION = 1
 MATERIALS = {"default", "mica", "micaAlt", "acrylic", "mica_keepActive", "micaAlt_keepActive", "acrylic_keepActive"}
+
+
+def windows_system_dark() -> bool:
+    if os.name != "nt":
+        return True
+    try:
+        import winreg
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        ) as key:
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return int(value) == 0
+    except OSError:
+        return True
 
 def decode_splash_logo(encoded):
     """Validate the small PNG produced by the page before passing it to JadeView."""
@@ -79,7 +96,7 @@ class Playground:
         self.initialized = False
         self.trace_enabled = os.environ.get("JADEVIEW_PLAYGROUND_TRACE") == "1"
         self.open_started = {}
-        self.theme = "Dark"
+        self.theme = "Dark" if windows_system_dark() else "Light"
         self.is_windows = os.name == "nt"
         self.is_win11 = bool(self.native.lib.is_windows_11()) if self.is_windows else False
         self.keep_active_backdrop = self.is_win11 and sys.getwindowsversion().build >= DWMSBT_MIN_BUILD
@@ -317,6 +334,48 @@ class Playground:
             self.trusted.add(identity)
         self.native.subscribe("webview", identity, self.on_event)
 
+    def resolve_theme_name(self, theme: str) -> str:
+        if theme in ("Dark", "Light"):
+            return theme
+        return "Dark" if windows_system_dark() else "Light"
+
+    def window_background_for_theme(self, theme: str) -> str:
+        return LIGHT_WINDOW_BACKGROUND if self.resolve_theme_name(theme) == "Light" else MAIN_WINDOW_BACKGROUND
+
+    def overlay_colors_for_theme(self, theme: str):
+        if self.resolve_theme_name(theme) == "Light":
+            return b"#1b1b1b", b"#00000008", b"#00000014"
+        return b"#f4f6fb", b"#ffffff10", b"#ffffff20"
+
+    def notify_window_theme(self, window_id: int, theme: str):
+        payload = encode(json.dumps({"windowId": window_id, "theme": theme}, ensure_ascii=False))
+        targets = []
+        controller = self.controllers.get(window_id)
+        if controller and controller in self.trusted:
+            targets.append(controller)
+        for pane_id, pane in list(self.panes.items()):
+            if pane.get("windowId") == window_id and pane_id in self.trusted:
+                targets.append(pane_id)
+        for view_id in targets:
+            try:
+                self.native.accepted("send_ipc_message", view_id, b"playground.theme", payload)
+            except Exception:
+                pass
+
+    def apply_window_theme(self, identity: int, value: str, *, follow_main: bool | None = None):
+        self.native.accepted("set_window_theme", identity, encode(value))
+        record = self.windows[identity]
+        record["theme"] = value
+        if follow_main is not None:
+            record["followMainTheme"] = follow_main
+        if record.get("material", "default") == "default" and not record.get("transparentView"):
+            color = self.window_background_for_theme(value) + "ff"
+            self.native.accepted("set_window_background_color", identity, encode(color))
+        if record.get("kind") == "overlay" and self.is_windows and not record.get("customOverlayStyle"):
+            fg, btn_bg, hover_bg = self.overlay_colors_for_theme(value)
+            self.native.accepted("set_titlebar_style", identity, 40, None, fg, btn_bg, hover_bg, None)
+        self.notify_window_theme(identity, value)
+
     def start(self):
         started = time.perf_counter_ns()
         timings = {}
@@ -473,8 +532,10 @@ class Playground:
         window_id = self.owned_window(None)
         if len([pane for pane in self.panes.values() if pane["windowId"] == window_id]) >= 6:
             raise ValueError("This example supports up to six layout WebViews")
-        settings = self.settings(payload.get("settings"), dedicated=bool(payload.get("isolatedProfile")))
-        url = self.entry + "/pane.html?pane=" + str(self.next_profile)
+        parent_theme = self.windows.get(window_id, {}).get("theme", self.theme)
+        settings_payload = {"background_color": self.window_background_for_theme(parent_theme), **(payload.get("settings") or {})}
+        settings = self.settings(settings_payload, dedicated=bool(payload.get("isolatedProfile")))
+        url = self.entry + "/pane.html?pane=" + str(self.next_profile) + "&theme=" + parent_theme.lower()
         bounds = Bounds("0", "0", "1px", "1px")
         if payload.get("detached"):
             identity = self.native.accepted("create_webview", encode(url), C.byref(settings))
@@ -620,9 +681,13 @@ class Playground:
         if not isinstance(title, str):
             raise ValueError("Window title must be a string")
         title = title.strip()[:120] or "NEXT · " + titles[kind]
-        theme = launch.get("theme", self.theme)
+        supports_launch_theme = kind in ("theme", "overlay", "splash")
+        requested_theme = launch.get("theme") if supports_launch_theme else None
+        explicit_theme = requested_theme is not None
+        theme = requested_theme or self.theme
         if theme not in ("System", "Dark", "Light"):
             raise ValueError("Unknown theme")
+        follow_main_theme = (not supports_launch_theme) or (not explicit_theme) or theme == self.theme
         resizable = flag("resizable", True)
         topmost = flag("topmost", False)
         maximized = flag("maximized", False)
@@ -649,7 +714,7 @@ class Playground:
         # 背景材料示例在运行时才切换 Mica / Acrylic，set_window_backdrop 只改 DWM 属性，
         # 不会回填窗口底色。窗口与 WebView 必须从创建起就是透明底，否则会盖住材质。
         transparent_view = kind == "theme" or material != "default"
-        window_background = "#00000000" if transparent_view else "#151a22"
+        window_background = "#00000000" if transparent_view else self.window_background_for_theme(theme)
         options = WindowOptions(title=title, width=width, height=height, x=x, y=y,
             # 最小尺寸不能大过自己：否则选了 600 宽也会被系统顶回去。
             min_width=min(1000 if kind == "layout" else 800, width),
@@ -667,7 +732,7 @@ class Playground:
             settings = self.settings({"background_color": window_background},
                 dedicated=kind in ("resources", "permissions", "profiles"))
             # 带材质的窗口从创建起就是透明的，页面这一帧就要知道别铺不透明底色。
-            url = self.entry + "/index.html?example=" + kind
+            url = self.entry + "/index.html?example=" + kind + "&theme=" + theme.lower()
             if transparent_view:
                 url += "&surface=material"
             identity = self.native.create_window(url, options=options, settings=settings, features=features).id
@@ -678,6 +743,9 @@ class Playground:
             "width": width, "height": height, "x": x, "y": y,
             "topmost": topmost, "resizable": resizable,
             "protected": protected, "maximized": maximized,
+            "transparentView": transparent_view,
+            "followMainTheme": follow_main_theme,
+            "customOverlayStyle": False,
             "splashDuration": splash.minimum_ms if splash is not None else None})
         view = self.native.lib.get_default_webview(identity)
         if view:
@@ -688,9 +756,8 @@ class Playground:
             self.apply_titlebar_style(identity, *titlebar_style)
             self.native.accepted("set_window_focus", identity)
         elif kind == "overlay" and self.is_windows:
-            # 与前端输入框默认值保持一致：foreground / button_background / hover_background。
-            self.native.accepted("set_titlebar_style", identity, 40, None, b"#f4f6fb",
-                b"#ffffff10", b"#ffffff20", None)
+            fg, btn_bg, hover_bg = self.overlay_colors_for_theme(theme)
+            self.native.accepted("set_titlebar_style", identity, 40, None, fg, btn_bg, hover_bg, None)
         self.trace("window-submitted", started, windowId=identity, kind=kind)
         return self.snapshot()
 
@@ -705,7 +772,14 @@ class Playground:
                 "version": n.text("jadeview_version"), "engine": n.text("get_webview_version"),
                 "platform": platform.system(), "win11": self.is_win11,
                 "keepActiveBackdrop": self.keep_active_backdrop,
-                "pointerBits": C.sizeof(C.c_void_p) * 8, "snapshot": self.snapshot()}
+                "pointerBits": C.sizeof(C.c_void_p) * 8, "snapshot": self.snapshot(),
+                "host": {
+                    "language": "python",
+                    "name": f"Python {platform.python_version()}",
+                    "version": "0.2.0",
+                    "launchCommand": "npm ci\npython hosts/python/run.py --dev",
+                    "repository": "https://github.com/tuyangJs/jadeview-playground",
+                }}
         if action == "frontend.ready":
             identity = self.context.window_id
             started = self.open_started.pop(identity, None)
@@ -790,8 +864,9 @@ class Playground:
             identity = self.owned_window(payload["id"])
             if self.native.lib.get_default_webview(identity):
                 raise ValueError("This window already has a WebView")
-            settings = self.settings()
-            view = n.accepted("create_webview", encode(self.entry + "/pane.html?window=attached"), C.byref(settings))
+            parent_theme = self.windows.get(identity, {}).get("theme", self.theme)
+            settings = self.settings({"background_color": self.window_background_for_theme(parent_theme)})
+            view = n.accepted("create_webview", encode(self.entry + "/pane.html?window=attached&theme=" + parent_theme.lower()), C.byref(settings))
             self.subscribe_view(view)
             try:
                 n.request("add_webview_to_window", identity, view, C.byref(Bounds()))
@@ -816,10 +891,15 @@ class Playground:
                 value = payload["value"]
                 if value not in ("System", "Dark", "Light"):
                     raise ValueError("Unknown theme")
-                n.accepted("set_window_theme", identity, encode(value))
-                self.windows[identity]["theme"] = value
                 if identity == self.main_window:
+                    n.accepted("set_window_theme", identity, encode(value))
+                    self.windows[identity]["theme"] = value
                     self.theme = value
+                    for wid, record in list(self.windows.items()):
+                        if wid != self.main_window and record.get("followMainTheme", True):
+                            self.apply_window_theme(wid, value)
+                else:
+                    self.apply_window_theme(identity, value, follow_main=False)
             elif operation == "material":
                 if not self.is_win11:
                     raise ValueError("Background materials require Windows 11")
@@ -849,6 +929,7 @@ class Playground:
                 n.accepted("set_titlebar_style", identity, int(payload["height"]), None,
                     encode(payload["color"]), encode(payload.get("button_bg", "")),
                     encode(payload["hover"]), None)
+                self.windows[identity]["customOverlayStyle"] = True
             elif operation == "frame":
                 Window(n, identity).set_frame(payload["style"])
                 self.windows[identity]["style"] = payload["style"]
@@ -960,6 +1041,24 @@ class Playground:
             return {"displays": json.loads(n.text("get_displays_info")), "locale": n.text("getLocale"),
                 "paths": {name: n.text("getPath", encode(name)) for name in ("app", "userData", "temp")},
                 "mount": self.mount_capabilities()}
+        if action == "external.open":
+            url = str(payload.get("url", "")).strip()
+            parsed = urlsplit(url)
+            if parsed.scheme.lower() not in ("https", "http") or not parsed.netloc:
+                raise ValueError("Only HTTP/HTTPS URLs can be opened externally")
+            return bool(webbrowser.open(url))
+        if action == "nav.state":
+            return {
+                "canGoBack": bool(n.lib.webview_can_go_back(source)),
+                "canGoForward": bool(n.lib.webview_can_go_forward(source)),
+            }
+        if action == "nav.go":
+            direction = payload.get("direction")
+            if direction == "back":
+                return bool(n.accepted("webview_go_back", source))
+            if direction == "forward":
+                return bool(n.accepted("webview_go_forward", source))
+            raise ValueError("Unknown navigation direction")
         if action == "storage.save":
             result = n.lib.yaml_set(b"playground.yaml", b"example.value", encode(json.dumps(payload["value"], ensure_ascii=False)))
             if result != 1:

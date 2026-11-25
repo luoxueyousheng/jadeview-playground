@@ -65,6 +65,8 @@ export interface Prefs {
    * 想要固定状态（比如一直收起）就在设置里关掉，之后手动切换即可。
    */
   sidebarAuto: boolean;
+  /** 侧边栏是否收起为紧凑图标栏。 */
+  sidebarCollapsed: boolean;
   /**
    * 记住上次停留的导航页面，下次启动直接回到那里。
    *
@@ -113,6 +115,7 @@ export const DEFAULT_PREFS: Prefs = {
   heroCollapsed: false,
   // 自动展开默认开：拉宽窗口时把侧栏带回来
   sidebarAuto: true,
+  sidebarCollapsed: false,
   // 默认关：不开启时行为和以前一样，永远从「常用」开始
   rememberPage: false,
   dynamicIsland: false,
@@ -186,6 +189,7 @@ function normalize(stored: Partial<Prefs>): Prefs {
     heroCollapsed: stored.heroCollapsed === true,
     // 没存过 = 开（默认行为）；只有明确存成 false 才关
     sidebarAuto: stored.sidebarAuto !== false,
+    sidebarCollapsed: stored.sidebarCollapsed === true,
     // 没存过 = 关：老用户升级后行为不变，要记住页面得自己去设置里打开
     rememberPage: stored.rememberPage === true,
     // 只存偏好；是否生效由服务端功能清单（dynamic-island）决定，见 App 里的同步逻辑
@@ -277,6 +281,9 @@ export function setHeroCollapsed(collapsed: boolean): void {
 /** 自动展开侧栏：变宽时自动展开，变窄始终收起。 */
 export function setSidebarAuto(enabled: boolean): void {
   commit({ ...current, sidebarAuto: enabled });
+}
+export function setSidebarCollapsed(collapsed: boolean): void {
+  commit({ ...current, sidebarCollapsed: collapsed });
 }
 /** 记住上次停留的导航页面（记录写在 `lastPage.ts` 的独立 key 里）。 */
 export function setRememberPage(enabled: boolean): void {

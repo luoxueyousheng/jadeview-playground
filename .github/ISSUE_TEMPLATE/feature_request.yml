@@ -1,0 +1,28 @@
+name: ✨ 新示例或功能建议（Feature Request）
+description: 建议新增 JadeView 原生能力示例、前端预留插槽或跨语言协议扩展
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: category
+    attributes:
+      label: 建议类别
+      options:
+        - 新增 JadeView 能力示例
+        - 新增前端预留插槽（slots.tsx）
+        - 跨语言宿主协议 / 文档改进
+        - UI 交互与体验优化
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 需求背景与解决什么问题
+      placeholder: 描述希望演示的 JadeView API、业务场景或当前前端/规范的不足。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望方案
+      placeholder: 例如需要哪些启动参数、IPC action 或参考代码展示。

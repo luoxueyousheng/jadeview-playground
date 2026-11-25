@@ -1,7 +1,7 @@
 import math
 import re
 import unittest
-from host.layout import layout_bounds
+from hosts.python.layout import layout_bounds
 
 def evaluate(expression, viewport):
     match = re.fullmatch(r"(-?[\d.]+)%([+-])([\d.]+)px", expression)

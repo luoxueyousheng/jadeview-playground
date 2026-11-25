@@ -306,7 +306,22 @@ const C_WEBVIEW_SETTINGS: ApiReference = {
   details: "先用 webview_settings_default 初始化结构体，再设置 profile_name 或 incognito 等字段。",
 };
 
+const LANGUAGE_API_REFERENCES: Partial<Record<CodeLanguage, Record<string, ApiReference>>> = {};
+
+/** 为特定语言注册或补充 API Hover 参考文档 */
+export function registerApiReference(
+  language: CodeLanguage,
+  entries: Readonly<Record<string, ApiReference>>,
+): void {
+  LANGUAGE_API_REFERENCES[language] = {
+    ...LANGUAGE_API_REFERENCES[language],
+    ...entries,
+  };
+}
+
 export function getApiReference(name: string, language: CodeLanguage): ApiReference | undefined {
+  const custom = LANGUAGE_API_REFERENCES[language];
+  if (custom && Object.hasOwn(custom, name)) return custom[name];
   if (name === "create_window" && language === "Python") return PYTHON_CREATE_WINDOW;
   if (name === "WebViewSettings" && language === "C") return C_WEBVIEW_SETTINGS;
   return Object.hasOwn(API_REFERENCE, name) ? API_REFERENCE[name] : undefined;

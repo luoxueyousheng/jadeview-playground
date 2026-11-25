@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 跨语言宿主集成规范（HOST_INTEGRATION_SPEC）
+    url: https://github.com/tuyangJs/jadeview-playground/blob/main/docs/HOST_INTEGRATION_SPEC.md
+    about: 新增 Go / Rust / C# 等宿主前先查看 IPC 协议、hello 握手与插槽规范
+  - name: 🤝 贡献指南与 PR 目录约定（CONTRIBUTING）
+    url: https://github.com/tuyangJs/jadeview-playground/blob/main/CONTRIBUTING.md
+    about: 查看 hosts/<lang>/ 与 web/src/hosts/languages/<lang>.ts 的提交规范

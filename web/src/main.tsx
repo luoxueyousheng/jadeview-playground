@@ -7,6 +7,9 @@ import "./playground.css";
 import App from "./App";
 import { startThemeSync } from "./lib/theme";
 import { usePrefs } from "./lib/prefs";
+import { initHostLanguageModules } from "./hosts";
+
+initHostLanguageModules();
 
 const host = document.getElementById("root");
 if (!host) {

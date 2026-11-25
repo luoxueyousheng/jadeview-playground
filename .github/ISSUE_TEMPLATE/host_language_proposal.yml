@@ -1,0 +1,37 @@
+name: 🧩 新增宿主语言适配（New Host Language）
+description: 认领或提议为 JadeView Playground 新增一门编程语言的宿主实现（如 Go / Rust / C#）
+title: "[Host]: 新增 <语言> 宿主实现"
+labels: ["enhancement", "host"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交新语言宿主 PR 前，可先通过本模板对齐协议疑问或认领适配计划。
+        目录规范与提交流程请先阅读仓库内 `hosts/README.md`、`CONTRIBUTING.md` 和 `docs/HOST_INTEGRATION_SPEC.md`。
+  - type: input
+    id: language
+    attributes:
+      label: 目标编程语言与目录名
+      placeholder: "例如：go（对应 hosts/go/ 与 web/src/hosts/languages/go.ts）"
+    validations:
+      required: true
+  - type: input
+    id: binding
+    attributes:
+      label: JadeView 绑定方式
+      placeholder: "例如：CGO 调用 JadeView.dll / purego / 第三方绑定库地址"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 计划范围
+      options:
+        - label: 按 `hosts/<lang>/` 规范放置完整可运行宿主代码与 `host.json`
+        - label: 新增 `web/src/hosts/languages/<lang>.ts` 对应参考代码与扩展插槽
+        - label: 需要确认特定 IPC action 或原生能力细节
+  - type: textarea
+    id: details
+    attributes:
+      label: 补充说明或需讨论的规范问题
+      placeholder: 说明目前进度、尚未支持的能力或对前端插槽/协议的建议...

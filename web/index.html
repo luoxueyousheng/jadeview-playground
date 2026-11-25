@@ -13,22 +13,31 @@
   -->
   <script>
     (function () {
-      if (new URLSearchParams(location.search).get("surface") === "material") {
+      var params = new URLSearchParams(location.search);
+      if (params.get("surface") === "material") {
         document.documentElement.dataset.surface = "material";
       }
-      try {
-        var raw = localStorage.getItem("tf3mm.prefs");
-        var prefs = raw ? JSON.parse(raw) : {};
-        var theme = prefs.theme;
-        if (theme !== "dark" && theme !== "light") {
-          theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        }
-        document.documentElement.dataset.theme = theme;
-        if (prefs.colorWeakMode === true) document.documentElement.setAttribute("data-color-weak", "");
-      } catch (error) {
-        /* 拿不到偏好就跟随系统，不影响功能 */
+      var urlTheme = params.get("theme");
+      if (urlTheme === "dark" || urlTheme === "light") {
+        document.documentElement.dataset.theme = urlTheme;
+      } else if (urlTheme === "system") {
         document.documentElement.dataset.theme =
           window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      } else {
+        try {
+          var raw = localStorage.getItem("tf3mm.prefs");
+          var prefs = raw ? JSON.parse(raw) : {};
+          var theme = prefs.theme;
+          if (theme !== "dark" && theme !== "light") {
+            theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+          document.documentElement.dataset.theme = theme;
+          if (prefs.colorWeakMode === true) document.documentElement.setAttribute("data-color-weak", "");
+        } catch (error) {
+          /* 拿不到偏好就跟随系统，不影响功能 */
+          document.documentElement.dataset.theme =
+            window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
       }
     })();
   </script>

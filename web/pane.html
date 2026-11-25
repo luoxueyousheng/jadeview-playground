@@ -7,6 +7,11 @@
   <title>JadeView Playground · 视图</title>
   <script>
     (function () {
+      var urlTheme = new URLSearchParams(location.search).get("theme");
+      if (urlTheme === "dark" || urlTheme === "light") {
+        document.documentElement.dataset.theme = urlTheme;
+        return;
+      }
       var dark = !window.matchMedia || window.matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.dataset.theme = dark ? "dark" : "light";
     })();

@@ -1,9 +1,9 @@
 /**
- * 宿主桥接层。
+ * 宿主桥接层（Host-agnostic）。
  *
- * 页面由 Python 宿主通过 JadeView 的自定义协议提供，所有能力都走 `jade.invoke`：
- * 请求体是 `{ action, ...参数 }`，回包统一是 `{ ok, result, error }`。
- * 这里只做「拆包 + 类型标注」，不放业务判断。
+ * 本前端可搭配任意编程语言的 JadeView 宿主（Python / Rust / Go / C / C# / Node.js 等）。
+ * 默认通过 `window.jade.invoke(channel, { action, ...参数 })` 与宿主通信，
+ * 回包统一为 `{ ok, result, error }`；也可通过 `registerHostTransport()` 注入自定义传输层。
  */
 
 import type { LaunchOptions } from "./launch";
@@ -58,6 +58,29 @@ export interface Snapshot {
   theme: string;
 }
 
+/**
+ * 宿主在 `hello` 中返回的多语言描述信息（可选字段，向下兼容旧宿主）。
+ * 任意编程语言宿主均可通过它向前端声明身份、能力边界、启动命令与示例代码。
+ */
+export interface HostDescriptor {
+  /** 宿主语言标识，如 "python" | "rust" | "go" | "c" | "cpp" | "csharp" | "nodejs" */
+  language: string;
+  /** 展示名称，如 "Python 3.12" / "Rust (wry/jadeview)" / "Go 1.23" */
+  name?: string;
+  /** 宿主或语言绑定库版本 */
+  version?: string;
+  /** 宿主开发启动命令（在「关于」页展示） */
+  launchCommand?: string;
+  /** 宿主仓库或文档链接 */
+  repository?: string;
+  /** 宿主声明支持的动作或能力清单；缺省时默认支持全部基础能力 */
+  capabilities?: string[];
+  /** 不支持的示例映射：`{ [kind]: "不支持原因" }` */
+  unsupportedExamples?: Record<string, string>;
+  /** 宿主注入的示例代码覆盖：`{ [exampleKind]: { [languageLabel]: code } }` */
+  codeSnippets?: Record<string, Record<string, string>>;
+}
+
 export interface RuntimeInfo {
   sourceId: number;
   windowId: number;
@@ -68,6 +91,8 @@ export interface RuntimeInfo {
   keepActiveBackdrop: boolean;
   pointerBits: number;
   snapshot: Snapshot;
+  /** 多语言宿主描述信息（由宿主在 `hello` 中返回，缺省时前端回退为通用展示） */
+  host?: HostDescriptor;
 }
 
 export interface NativeEvent {
@@ -126,6 +151,7 @@ export interface Jade {
 declare global {
   interface Window {
     jade?: Jade;
+    __JADE_PLAYGROUND_CHANNEL__?: string;
   }
 }
 
@@ -135,17 +161,52 @@ interface Response<T> {
   error?: string;
 }
 
+let customTransport: Jade | null = null;
+
+/**
+ * 预留插槽：允许自定义宿主前端适配层替换默认 `window.jade` 传输对象
+ * （例如 WebSocket 远程调试桥、测试替身或自定义通道包装）。
+ */
+export function registerHostTransport(transport: Jade | null): void {
+  customTransport = transport;
+}
+
+export function getPlaygroundChannel(): string {
+  if (typeof window === "undefined") return "playground";
+  const fromQuery = new URLSearchParams(window.location.search).get("channel")?.trim();
+  return fromQuery || window.__JADE_PLAYGROUND_CHANNEL__ || "playground";
+}
+
 export function hasBridge(): boolean {
-  return typeof window !== "undefined" && !!window.jade;
+  return Boolean(customTransport) || (typeof window !== "undefined" && !!window.jade);
 }
 
 export function jade(): Jade {
-  if (!window.jade) throw new Error("请通过 Python 宿主打开此页面（python run.py）");
+  if (customTransport) return customTransport;
+  if (!window.jade) throw new Error("请通过 JadeView 宿主程序打开此页面");
   return window.jade;
 }
 
+export function hasCapability(runtime: RuntimeInfo | null | undefined, capability: string): boolean {
+  const list = runtime?.host?.capabilities;
+  if (!list) return true;
+  return list.includes(capability);
+}
+
+export function getExampleSupport(
+  runtime: RuntimeInfo | null | undefined,
+  kind: string,
+): { supported: boolean; reason?: string } {
+  const hostReason = runtime?.host?.unsupportedExamples?.[kind];
+  if (hostReason) return { supported: false, reason: hostReason };
+  if ((kind === "splash" || kind === "webpopup") && runtime?.platform !== "Windows") {
+    return { supported: false, reason: "此示例需要 Windows。" };
+  }
+  return { supported: true };
+}
+
 export async function rpc<T>(action: string, data: Record<string, unknown> = {}): Promise<T> {
-  const response = await jade().invoke("playground", { action, ...data });
+  const response = await jade().invoke(getPlaygroundChannel(), { action, ...data });
   const result: Response<T> = typeof response === "string" ? JSON.parse(response) : (response as Response<T>);
   if (!result.ok) throw new Error(result.error || "宿主操作失败");
   return result.result;
@@ -194,6 +255,9 @@ export const api = {
   tray: (enabled: boolean) => rpc<boolean>("tray", { enabled }),
   system: () =>
     rpc<{ displays: unknown; locale: string; paths: Record<string, string>; mount: unknown }>("system"),
+  openExternal: (url: string) => rpc<boolean>("external.open", { url }),
+  navState: () => rpc<{ canGoBack: boolean; canGoForward: boolean }>("nav.state"),
+  navGo: (direction: "back" | "forward") => rpc<boolean>("nav.go", { direction }),
   storageSave: (value: unknown) => rpc<boolean>("storage.save", { value }),
   storageRead: () => rpc<unknown>("storage.read"),
 };

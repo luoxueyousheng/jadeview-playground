@@ -61,6 +61,7 @@ class Native(Runtime):
             "recreate_webview": ([U32, TXT, C.POINTER(WebViewSettings)], U64),
             "get_webview_url": ([U32, C.c_void_p, I32], I32),
             "webview_go_back": ([U32], I32), "webview_go_forward": ([U32], I32),
+            "webview_can_go_back": ([U32], I32), "webview_can_go_forward": ([U32], I32),
             "set_webview_zoom": ([U32, C.c_double], I32),
             "open_devtools": ([U32], I32), "close_devtools": ([U32], I32),
             "send_ipc_message": ([U32, TXT, TXT], I32),

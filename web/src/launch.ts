@@ -59,6 +59,7 @@ export interface LaunchDraft {
   y: string;
   material: Material;
   theme: LaunchTheme;
+  themeCustomized?: boolean;
   style: LaunchStyle;
   titlebarHeight: string;
   titlebarColors: TitlebarColors;
@@ -84,7 +85,7 @@ export interface LaunchOptions {
   x: number | null;
   y: number | null;
   material: Material;
-  theme: LaunchTheme;
+  theme?: LaunchTheme;
   style: LaunchStyle;
   titlebarStyle?: TitlebarStyle;
   frameless: boolean;
@@ -123,6 +124,7 @@ export function defaultDraft(kind: string, theme: LaunchTheme, win11: boolean): 
     y: "",
     material: defaultMaterial(kind, win11),
     theme,
+    themeCustomized: false,
     style: fixedStyle(kind) ?? (kind === "hidden" || kind === "frameless" ? "hidden" : "default"),
     titlebarHeight: "0",
     titlebarColors: {},
@@ -177,6 +179,7 @@ export function readDraft(kind: string, theme: LaunchTheme, win11: boolean, keep
   const fixed = fixedStyle(kind);
   const logo = record.splashLogoImage as Partial<SplashLogoImage> | null | undefined;
 
+  const keepStoredTheme = record["themeCustomized"] === true && (kind === "theme" || kind === "overlay" || kind === "splash");
   return {
     title: text(record["title"], base.title),
     width: text(record["width"], base.width),
@@ -184,7 +187,8 @@ export function readDraft(kind: string, theme: LaunchTheme, win11: boolean, keep
     x: text(record["x"], base.x),
     y: text(record["y"], base.y),
     material: win11 ? pick(material, materialOptions(keepActiveBackdrop), base.material) : base.material,
-    theme: pick(record["theme"], THEME_OPTIONS, base.theme),
+    theme: keepStoredTheme ? pick(record["theme"], THEME_OPTIONS, base.theme) : base.theme,
+    themeCustomized: keepStoredTheme,
     style: fixed ?? base.style,
     titlebarHeight: text(record.titlebarHeight, base.titlebarHeight),
     titlebarColors: readTitlebarColors(record.titlebarColors),
@@ -237,6 +241,7 @@ function optionalInt(input: string, limit = 20000): number | null {
 export function toLaunch(kind: string, draft: LaunchDraft): LaunchOptions {
   const size = defaultSize(kind);
   const titlebarHeight = kind === "dwm" ? parseTitlebarHeight(draft.titlebarHeight) : null;
+  const sendsTheme = kind === "theme" || kind === "overlay" || kind === "splash";
   return {
     title: draft.title.trim().slice(0, 120),
     width: clampInt(draft.width, size.width, SIZE_LIMITS.minWidth, SIZE_LIMITS.maxWidth),
@@ -244,7 +249,7 @@ export function toLaunch(kind: string, draft: LaunchDraft): LaunchOptions {
     x: optionalInt(draft.x),
     y: optionalInt(draft.y),
     material: draft.material,
-    theme: draft.theme,
+    ...(sendsTheme ? { theme: draft.theme } : {}),
     style: fixedStyle(kind) ?? draft.style,
     titlebarStyle: titlebarHeight === null ? undefined : { height: titlebarHeight, colors: draft.titlebarColors },
     frameless: draft.frameless,

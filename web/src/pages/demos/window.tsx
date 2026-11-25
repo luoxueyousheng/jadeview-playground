@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api } from "../../bridge";
 import { ColorPicker } from "../../components/ColorPicker";
@@ -168,14 +168,31 @@ export function DwmDemo(props: DemoProps) {
   );
 }
 
+function defaultOverlayPalette(theme: string) {
+  const dark = theme === "Dark" || (theme === "System" && globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches);
+  return dark
+    ? { color: "#f4f6fb", buttonBg: "#ffffff10", hover: "#ffffff20" }
+    : { color: "#1b1b1b", buttonBg: "#00000008", hover: "#00000014" };
+}
+
 /** BarOverlay 覆盖层示例：组件开关 + 覆盖层样式。 */
 export function OverlayDemo(props: DemoProps) {
   const { window, toast, refresh } = props;
+  const initialPalette = defaultOverlayPalette(window.theme);
   const [height, setHeight] = useState("40");
-  const [color, setColor] = useState("#f4f6fb");
-  const [buttonBg, setButtonBg] = useState("#ffffff10");
-  const [hover, setHover] = useState("#ffffff20");
+  const [color, setColor] = useState(initialPalette.color);
+  const [buttonBg, setButtonBg] = useState(initialPalette.buttonBg);
+  const [hover, setHover] = useState(initialPalette.hover);
   const [busy, setBusy] = useState(false);
+  const edited = useRef(false);
+
+  useEffect(() => {
+    if (edited.current) return;
+    const next = defaultOverlayPalette(window.theme);
+    setColor(next.color);
+    setButtonBg(next.buttonBg);
+    setHover(next.hover);
+  }, [window.theme]);
 
   const apply = async () => {
     setBusy(true);
@@ -209,13 +226,13 @@ export function OverlayDemo(props: DemoProps) {
             />
           </Row>
           <Row label="图标颜色">
-            <ColorPicker label="图标颜色" value={color} onChange={setColor} />
+            <ColorPicker label="图标颜色" value={color} onChange={(next) => { edited.current = true; setColor(next); }} />
           </Row>
           <Row label="按钮背景" hint="常态">
-            <ColorPicker label="按钮背景" value={buttonBg} onChange={setButtonBg} />
+            <ColorPicker label="按钮背景" value={buttonBg} onChange={(next) => { edited.current = true; setButtonBg(next); }} />
           </Row>
           <Row label="悬浮背景">
-            <ColorPicker label="悬浮背景" value={hover} onChange={setHover} />
+            <ColorPicker label="悬浮背景" value={hover} onChange={(next) => { edited.current = true; setHover(next); }} />
           </Row>
           <Foot>
             <Button variant="primary" busy={busy} onClick={() => void apply()}>

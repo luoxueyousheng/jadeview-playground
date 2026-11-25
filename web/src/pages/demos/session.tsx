@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { api } from "../../bridge";
 import { Button, Segmented } from "../../components/controls";
-import { Card, Code, Foot, Group, Hint, Row } from "../../components/primitives";
+import { Card, Code, Foot, Group, Hint, Readout, Row } from "../../components/primitives";
 import type { DemoProps } from "./types";
 
 const POLICIES = [
@@ -75,10 +75,10 @@ export function PermissionsDemo({ toast }: DemoProps) {
       <Group title="会话隔离">
         <Card>
           <Row label="独立 Profile" hint="布局示例的「新视图配置」里可以勾选">
-            <span className="readout">localStorage 与共享会话互不相通</span>
+            <Readout>localStorage 与共享会话互不相通</Readout>
           </Row>
           <Row label="无痕模式" hint="关闭视图即丢弃数据">
-            <span className="readout">不落盘，退出后不保留</span>
+            <Readout>不落盘，退出后不保留</Readout>
           </Row>
           <Foot>
             资源媒体、权限测试与 Linux 本地 HTTPS 视图默认使用独立 Profile；

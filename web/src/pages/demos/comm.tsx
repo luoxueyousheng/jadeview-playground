@@ -126,7 +126,7 @@ export function IpcDemo({ snapshot, toast }: DemoProps) {
             <Select label="发送给" value={target} onChange={setTarget} options={targets} />
           </Row>
           <Row label="消息">
-            <input type="text" value={message} onChange={(event) => setMessage(event.target.value)} />
+            <input className="pg-native-input" style={{ maxWidth: 280 }} type="text" value={message} onChange={(event) => setMessage(event.target.value)} />
           </Row>
           <Foot>
             <Button busy={busy} onClick={() => void broadcast()}>发送消息</Button>

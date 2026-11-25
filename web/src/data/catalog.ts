@@ -1,7 +1,15 @@
 import type { SampleField } from "../launch";
 import { webPopupSource } from "./webPopup";
 
-export type CodeLanguage = "C" | "JavaScript" | "Python";
+export type CodeLanguage =
+  | "C"
+  | "C++"
+  | "Go"
+  | "Rust"
+  | "Python"
+  | "JavaScript"
+  | "TypeScript"
+  | "C#";
 
 export interface ExampleMeta {
   kind: string;
@@ -16,6 +24,8 @@ export interface ExampleMeta {
   /** 在示例页显示的接口用法。 */
   api: string;
   language: CodeLanguage;
+  /** 可选的多语言参考代码映射，供自定义扩展示例使用。 */
+  snippets?: Partial<Record<CodeLanguage, string>>;
 }
 
 export interface NavGroup {
@@ -143,7 +153,7 @@ export const EXAMPLES: Record<string, ExampleMeta> = {
       "消息可广播到所有本地视图，或发送给指定 ID",
     ],
     language: "JavaScript",
-    api: "// 在 JadeView 的 WebView 中执行。playground 已由 Python 宿主注册。\nconst reply = await window.jade.invoke(\"playground\", {\n  action: \"echo\",\n  value: \"你好，JadeView\",\n});\nconsole.log(reply);\n\n// 一次提交两个请求。每项分别指定宿主通道和参数。\nconst replies = await window.jade.invokeBatch([\n  { command: \"playground\", payload: { action: \"echo\", value: 1 } },\n  { command: \"playground\", payload: { action: \"echo\", value: 2 } },\n]);\nconsole.log(replies);",
+    api: "// 在 JadeView 的 WebView 中执行。playground 通道由当前宿主注册。\nconst reply = await window.jade.invoke(\"playground\", {\n  action: \"echo\",\n  value: \"你好，JadeView\",\n});\nconsole.log(reply);\n\n// 一次提交两个请求。每项分别指定宿主通道和参数。\nconst replies = await window.jade.invokeBatch([\n  { command: \"playground\", payload: { action: \"echo\", value: 1 } },\n  { command: \"playground\", payload: { action: \"echo\", value: 2 } },\n]);\nconsole.log(replies);",
   },
   events: {
     kind: "events", title: "事件查看器", group: "通讯与事件", icon: "events",
@@ -262,7 +272,7 @@ update_menu()`,
     language: "Python",
     api: `# 给当前 WebView 设置菜单。字体路径应指向包含 U+2605 的字体。
 webview.set_context_menu([
-    {"id": "context.image", "label": "PNG 图标", "icon_path": "host/assets/playground.png"},
+    {"id": "context.image", "label": "PNG 图标", "icon_path": "assets/playground.png"},
     {"id": "context.glyph", "label": "字体图标",
      "icon_path": font_path, "icon_codepoint": 0x2605},
     {"kind": "separator"},

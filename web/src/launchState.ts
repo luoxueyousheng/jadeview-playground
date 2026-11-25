@@ -30,6 +30,18 @@ export function useLaunchState(kind: string, theme: LaunchTheme, win11: boolean,
 
   const latest = useRef(draft);
   const saveTimer = useRef<number | undefined>(undefined);
+  const prevMainTheme = useRef(theme);
+
+  useEffect(() => {
+    if (prevMainTheme.current === theme) return;
+    prevMainTheme.current = theme;
+    setDraft((current) => {
+      if (current.themeCustomized) return current;
+      const next = { ...current, theme };
+      latest.current = next;
+      return next;
+    });
+  }, [theme]);
 
   const save = useCallback(() => {
     if (saveTimer.current === undefined) return;

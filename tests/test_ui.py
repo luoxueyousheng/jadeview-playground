@@ -16,7 +16,7 @@ class FrontendStructureTests(unittest.TestCase):
             self.assertIn("./src/", text, page)
 
     def test_every_catalog_example_is_a_window_the_host_accepts(self):
-        host = (ROOT / "host" / "app.py").read_text(encoding="utf-8")
+        host = (ROOT / "hosts" / "python" / "app.py").read_text(encoding="utf-8")
         titles = host[host.index("titles = {"):]
         kinds = set(re.findall(r'"(\w+)": "', titles[:titles.index("}")]))
         examples = set(re.findall(r"^  (\w+): \{$", self.catalog(), re.M))

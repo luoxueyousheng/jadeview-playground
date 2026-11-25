@@ -1,0 +1,34 @@
+{
+  "id": "python",
+  "language": "Python",
+  "displayName": "Python + JadeView NEXT",
+  "version": "0.2.0",
+  "entry": "hosts/python/run.py",
+  "requirements": [
+    "Python 3.11+",
+    "Node.js 22+",
+    "JadeView NEXT 运行库（runtime/JadeView.dll 或 runtime/libJadeView.so，与 Python 同位数）"
+  ],
+  "devCommand": "python hosts/python/run.py --dev",
+  "runCommand": "python hosts/python/run.py",
+  "frontendArg": "--frontend <path>",
+  "devArg": "--dev [url]",
+  "capabilities": [
+    "window",
+    "layout",
+    "resources",
+    "ipc",
+    "events",
+    "dialogs",
+    "tray",
+    "clipboard",
+    "storage",
+    "runtime",
+    "permissions",
+    "menus"
+  ],
+  "supportedExamples": "all",
+  "unsupportedExamples": {},
+  "frontendModule": "web/src/hosts/languages/python.ts",
+  "repository": "https://github.com/tuyangJs/jadeview-playground"
+}

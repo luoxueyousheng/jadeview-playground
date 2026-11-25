@@ -1,0 +1,34 @@
+{
+  "id": "<lang_id>",
+  "language": "<DisplayLanguage>",
+  "displayName": "<Language> + JadeView NEXT",
+  "version": "0.1.0",
+  "entry": "hosts/<lang_id>/...",
+  "requirements": [
+    "<Toolchain version, e.g. Go 1.22+>",
+    "Node.js 22+",
+    "JadeView NEXT 运行库（runtime/JadeView.dll 或 runtime/libJadeView.so）"
+  ],
+  "devCommand": "<command to start host in dev mode, e.g. go run ./hosts/go -- --dev>",
+  "runCommand": "<command to start host with web/dist>",
+  "frontendArg": "--frontend <path>",
+  "devArg": "--dev [url]",
+  "capabilities": [
+    "window",
+    "layout",
+    "resources",
+    "ipc",
+    "events",
+    "dialogs",
+    "tray",
+    "clipboard",
+    "storage",
+    "runtime",
+    "permissions",
+    "menus"
+  ],
+  "supportedExamples": "all",
+  "unsupportedExamples": {},
+  "frontendModule": "web/src/hosts/languages/<lang_id>.ts",
+  "repository": "https://github.com/tuyangJs/jadeview-playground"
+}

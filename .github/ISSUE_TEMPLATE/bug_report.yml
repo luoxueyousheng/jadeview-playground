@@ -1,0 +1,53 @@
+name: 🐛 问题反馈（Bug Report）
+description: 反馈前端页面、宿主运行、示例窗口或构建测试中的异常问题
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题！请尽量提供宿主语言、系统环境与最小复现步骤，方便快速定位。
+  - type: dropdown
+    id: host_language
+    attributes:
+      label: 使用的宿主语言
+      options:
+        - Python（hosts/python）
+        - Go
+        - Rust
+        - C / C++
+        - C#
+        - 仅前端（web/）
+        - 其它
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 系统与环境信息
+      description: 可直接复制 Playground「关于」页或「运行环境」示例中的信息
+      placeholder: "例如：Windows 11 24H2 · JadeView 0.2.0 · WebView2 132.x · Python 3.12"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 启动命令：`python run.py --dev`
+        2. 打开示例：`...`
+        3. 操作后出现的问题...
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: 期望行为与实际表现
+      placeholder: 期望结果是什么？实际发生了什么？
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 错误日志 / 控制台输出（可选）
+      render: shell

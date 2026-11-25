@@ -132,7 +132,7 @@ export function ClipboardDemo({ toast }: DemoProps) {
     <Group title="纯文本剪贴板">
       <Card>
         <Row label="内容" stack>
-          <textarea value={text} rows={5} onChange={(event) => setText(event.target.value)} />
+          <textarea className="pg-textarea" value={text} rows={5} onChange={(event) => setText(event.target.value)} />
         </Row>
         <Foot>
           <Button busy={busy} onClick={() => void read()}>读取剪贴板</Button>
@@ -179,7 +179,7 @@ export function StorageDemo({ toast }: DemoProps) {
     <Group title="YAML 文件">
       <Card>
         <Row label="示例值">
-          <input type="text" value={value} onChange={(event) => setValue(event.target.value)} />
+          <input className="pg-native-input" style={{ maxWidth: 260 }} type="text" value={value} onChange={(event) => setValue(event.target.value)} />
         </Row>
         <Foot>
           <Button variant="primary" busy={busy} onClick={() => void save()}>保存</Button>
@@ -225,6 +225,14 @@ export function RuntimeDemo({ runtime, toast }: DemoProps) {
           <Row label="宿主进程">
             <Readout>{runtime.pointerBits} 位</Readout>
           </Row>
+          {runtime.host ? (
+            <Row label="宿主实现">
+              <Readout>
+                {runtime.host.name || runtime.host.language}
+                {runtime.host.version ? ` · v${runtime.host.version}` : ""}
+              </Readout>
+            </Row>
+          ) : null}
           <Row label="当前窗口">
             <Readout>
               Window {runtime.windowId} · WebView {runtime.sourceId}

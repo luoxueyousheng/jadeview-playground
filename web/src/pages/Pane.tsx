@@ -4,6 +4,7 @@ import { api, jade, hasBridge, type NativeEvent } from "../bridge";
 import { Button, TextArea } from "../components/controls";
 import { Badge, Card, Code, Foot, Group, Hint, Page, PageHead, Readout, Row } from "../components/primitives";
 import { WindowChrome } from "../components/WindowChrome";
+import { useHostWindowTheme } from "../lib/theme";
 import { useRuntime } from "../runtime";
 
 const NOTE_KEY = "playground.note";
@@ -16,10 +17,13 @@ const NOTE_KEY = "playground.note";
  * 我的状态是不是真的独立保存。
  */
 export function Pane() {
-  const { runtime, snapshot, error } = useRuntime();
+  const { runtime, snapshot, error, refresh } = useRuntime();
   const params = new URLSearchParams(location.search);
   const details = params.has("details");
   const hiddenFrame = params.get("window") === "hidden";
+
+  const parentWindow = snapshot?.windows.find((item) => item.id === runtime?.windowId);
+  useHostWindowTheme(runtime?.windowId, parentWindow?.theme ?? snapshot?.theme, refresh);
 
   const [note, setNote] = useState(() => localStorage.getItem(NOTE_KEY) ?? "");
   const [reply, setReply] = useState("");
