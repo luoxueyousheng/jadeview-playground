@@ -1,5 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
+  - name: 🚀 前往 jade.run 问题反馈中心创建 Issue（推荐）
+    url: https://jade.run/issues?repo=playground
+    about: 结构化填写运行环境与复现步骤，支持 GitHub / Gitee 一键提交与诊断排查
   - name: 📖 跨语言宿主集成规范（HOST_INTEGRATION_SPEC）
     url: https://github.com/tuyangJs/jadeview-playground/blob/main/docs/HOST_INTEGRATION_SPEC.md
     about: 新增 Go / Rust / C# 等宿主前先查看 IPC 协议、hello 握手与插槽规范
